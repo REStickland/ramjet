@@ -17,7 +17,7 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveDatabase):
         self.meta_data_frame: Union[pd.DataFrame, None] = None
         self.time_steps_per_example = 6400
         self.length_multiple_base = 32
-        self.batch_size = 100
+        self.batch_size = 50
 
     def generate_datasets(self, positive_data_directory: str, negative_data_directory: str,
                           meta_data_file_path: str) -> (tf.data.Dataset, tf.data.Dataset):
@@ -48,14 +48,14 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveDatabase):
         training_dataset = training_dataset.shuffle(buffer_size=len(list(training_dataset)))
         training_preprocessor = lambda file_path: tuple(tf.py_function(self.training_preprocessing,
                                                                        [file_path], [tf.float32, tf.float32]))
-        training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=16)
+        training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=1)
         training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
+            buffer_size=1)
         validation_preprocessor = lambda file_path: tuple(tf.py_function(self.evaluation_preprocessing,
                                                                          [file_path], [tf.float32, tf.float32]))
-        validation_dataset = validation_dataset.map(validation_preprocessor, num_parallel_calls=4)
+        validation_dataset = validation_dataset.map(validation_preprocessor, num_parallel_calls=1)
         validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
+            buffer_size=1)
         return training_dataset, validation_dataset
 
     def training_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
