@@ -33,6 +33,8 @@ for example_path in tqdm(example_paths):
     # Use prediction here as desired.
     if isinstance(prediction, tf.Tensor):
         prediction = prediction.numpy()  # Convert from TensorFlow tensor to NumPy array.
+    if isinstance(label, tf.Tensor):
+        label = label.numpy() # Convert from TensorFlow tensor to NumPy array.
     fluxes = lightcurve_data_frame['flux'].values
     times = lightcurve_data_frame['HJD'].values
     if prediction.shape[0] > fluxes.shape[0]:
