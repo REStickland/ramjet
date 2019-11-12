@@ -1,4 +1,8 @@
 """Code for inference on the contents of a directory."""
+#Tells the  infer script not to use the GPU:
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#follows normally
 import numpy as np
 import pandas as pd
 import tensorflow as tf
