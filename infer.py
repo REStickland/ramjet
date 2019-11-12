@@ -11,6 +11,7 @@ from pathlib import Path
 from models import ConvolutionalLstm
 from photometric_database.microlensing_label_per_time_step_database import MicrolensingLabelPerTimeStepDatabase
 from lightcurve_visualizer import plot_lightcurve
+from tqdm import tqdm
 # Set these paths to the correct paths.
 saved_log_directory = Path('logs/convolutional LSTM 2019-10-01-18-27-13')
 meta_data_path = Path('data/candlist_RADec.dat.feather')
@@ -25,7 +26,7 @@ model = ConvolutionalLstm()
 model.load_weights(str(saved_log_directory.joinpath('model.ckpt')))
 
 print('Inferring...')
-for example_path in example_paths:
+for example_path in tqdm(example_paths):
     example, label = database.evaluation_preprocessing(tf.convert_to_tensor(example_path))
     prediction = model.predict(tf.expand_dims(example, axis=0))[0]
     lightcurve_data_frame = pd.read_feather(example_path)  # Not required for prediction, but useful for analysis.
