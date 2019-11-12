@@ -53,12 +53,12 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveDatabase):
                                                                        [file_path], [tf.float32, tf.float32]))
         training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=16)
         training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
+            buffer_size=16)
         validation_preprocessor = lambda file_path: tuple(tf.py_function(self.evaluation_preprocessing,
                                                                          [file_path], [tf.float32, tf.float32]))
         validation_dataset = validation_dataset.map(validation_preprocessor, num_parallel_calls=16)
         validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
+            buffer_size=16)
         return training_dataset, validation_dataset
 
     def training_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
