@@ -10,7 +10,7 @@ from pathlib import Path
 
 from models import ConvolutionalLstm
 from photometric_database.microlensing_label_per_time_step_database import MicrolensingLabelPerTimeStepDatabase
-
+from lightcurve_visualizer import plot_lightcurve
 # Set these paths to the correct paths.
 saved_log_directory = Path('logs/convolutional LSTM 2019-10-01-18-27-13')
 meta_data_path = Path('data/candlist_RADec.dat.feather')
@@ -40,4 +40,4 @@ for example_path in example_paths:
         prediction = prediction[:fluxes.shape[0]]
     thresholded_prediction = prediction > 0.5  # Can threshold on some probability.
     # Can plot thresholded_predictions and fluxes here.
-    plot_lightcurve(times, fluxes, label, prediction, title=example, save_path=f'{example}.png')
+    plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'{example_path}.png')
