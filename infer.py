@@ -40,4 +40,4 @@ for example_path in example_paths:
         prediction = prediction[:fluxes.shape[0]]
     thresholded_prediction = prediction > 0.5  # Can threshold on some probability.
     # Can plot thresholded_predictions and fluxes here.
-    plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'{example_path}.png')
+    plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'inference_plots/{example_path}.png')
