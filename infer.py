@@ -30,8 +30,7 @@ for example_path in example_paths:
     prediction = model.predict(tf.expand_dims(example, axis=0))[0]
     lightcurve_data_frame = pd.read_feather(example_path)  # Not required for prediction, but useful for analysis.
     # Use prediction here as desired.
-
-    prediction = prediction.numpy()  # Convert from TensorFlow tensor to NumPy array.
+    #prediction = prediction.numpy()  # Convert from TensorFlow tensor to NumPy array.
     fluxes = lightcurve_data_frame['flux'].values
     times = lightcurve_data_frame['HJD'].values
     if prediction.shape[0] > fluxes.shape[0]:
