@@ -30,3 +30,14 @@ for example_path in example_paths:
     prediction = model.predict(tf.expand_dims(example, axis=0))[0]
     lightcurve_data_frame = pd.read_feather(example_path)  # Not required for prediction, but useful for analysis.
     # Use prediction here as desired.
+
+    prediction = prediction.numpy()  # Convert from TensorFlow tensor to NumPy array.
+    fluxes = lightcurve_data_frame['flux'].values
+    times = lightcurve_data_frame['HJD'].values
+    if prediction.shape[0] > fluxes.shape[0]:
+        prediction = np.pad(prediction, (0, fluxes.shape[0] - prediction.shape[0]))
+    elif prediction.shape[0] < fluxes.shape[0]:
+        prediction = prediction[:fluxes.shape[0]]
+    thresholded_prediction = prediction > 0.5  # Can threshold on some probability.
+    # Can plot thresholded_predictions and fluxes here.
+    plot_lightcurve(times, fluxes, label, prediction, title=example, save_path=f'{example}.png')
