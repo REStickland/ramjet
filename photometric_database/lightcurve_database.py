@@ -98,14 +98,15 @@ class LightcurveDatabase(ABC):
 
     def get_training_and_validation_datasets_for_file_paths(self, example_paths: List[Union[str, Path]]) -> (
             tf.data.Dataset, tf.data.Dataset):
+        """Creates a TensorFlow Dataset from a list of file names and desired label for those files."""
         example_paths = [str(example_path) for example_path in example_paths]
         np.random.seed(0)
         np.random.shuffle(example_paths)
         number_of_chunks = int(1 / self.validation_ratio)  # In this example, 5 chunks.
         chunks = np.array_split(example_paths, number_of_chunks)
-        validation_chunk_index = 2  # This value should be 0-4 to select different validation sets.
+        validation_chunk_index = 2  # This value should be changeable to select different validation sets.
         validation_paths = chunks[validation_chunk_index]
-        training_chunks = np.delete(chunks, validation_chunk_index)
+        training_chunks = np.delete(chunks, validation_chunk_index, axis=0)
         training_paths = np.concatenate(training_chunks)
         validation_dataset = tf.data.Dataset.from_tensor_slices(validation_paths)
         training_dataset = tf.data.Dataset.from_tensor_slices(training_paths)
