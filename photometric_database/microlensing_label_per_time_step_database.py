@@ -32,10 +32,10 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveDatabase):
         self.meta_data_frame = pd.read_feather(meta_data_file_path)
         positive_example_paths = list(Path(positive_data_directory).glob('*.feather'))
         positive_example_paths = self.remove_file_paths_with_no_meta_data(positive_example_paths, self.meta_data_frame)
-        positive_example_paths = positive_example_paths[:100]
+        #positive_example_paths = positive_example_paths[:100]
         print(f'{len(positive_example_paths)} positive examples.')
         negative_example_paths = list(Path(negative_data_directory).glob('*.feather'))
-        negative_example_paths = negative_example_paths[:100]
+        #negative_example_paths = negative_example_paths[:100]
         print(f'{len(negative_example_paths)} negative examples.')
 
         positive_datasets = self.get_training_and_validation_datasets_for_file_paths(positive_example_paths)
