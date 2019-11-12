@@ -12,7 +12,7 @@ from models import ConvolutionalLstm
 from photometric_database.microlensing_label_per_time_step_database import MicrolensingLabelPerTimeStepDatabase
 
 # Set these paths to the correct paths.
-saved_log_directory = Path('logs/baseline YYYY-MM-DD-hh-mm-ss')
+saved_log_directory = Path('logs/convolutional LSTM 2019-10-01-18-27-13')
 meta_data_path = Path('data/candlist_RADec.dat.feather')
 
 print('Setting up dataset...')
