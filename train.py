@@ -6,17 +6,17 @@ from tensorflow.python.keras import callbacks
 
 from ramjet.losses import PerTimeStepBinaryCrossEntropy
 from ramjet.models import ConvolutionalLstm
-from ramjet.photometric_database.toi_lightcurve_database import ToiLightcurveDatabase
+from ramjet.photometric_database.microlensing_label_per_time_step_database import MicrolensingLabelPerTimeStepDatabase
 
 
 def train():
     """Runs the training."""
     # Basic training settings.
     model = ConvolutionalLstm()
-    database = ToiLightcurveDatabase()
+    database = MicrolensingLabelPerTimeStepDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
-    trial_name = 'baseline'
+    trial_name = 'fulldataset'
     logs_directory = 'logs'
 
     # Setup logging.
