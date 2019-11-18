@@ -1,16 +1,21 @@
 """Code for inference on the contents of a directory."""
+#Tells the  infer script not to use the GPU:
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#follows normally
 import tensorflow as tf
 from pathlib import Path
+import pandas as pd
 
 from ramjet.analysis.lightcurve_visualizer import plot_lightcurve
 from ramjet.analysis.model_loader import get_latest_log_directory
 from ramjet.models import ConvolutionalLstm
 from ramjet.photometric_database.microlensing_label_per_time_step_database import MicrolensingLabelPerTimeStepDatabase
-from tdqm import tqdm
+from tqdm import tqdm
 
 
 # Set these paths to the correct paths.
-meta_data_path = Path('data/candlist_RADec.dat.feather')
+meta_data_path = Path('data/moa_microlensing/candlist_RADec.dat.feather')
 saved_log_directory = Path('logs/convolutional LSTM 2019-10-01-18-27-13')
 #saved_log_directory = get_latest_log_directory('logs')  # Uses the latest log directory's model.
 # saved_log_directory = Path('logs/baseline YYYY-MM-DD-hh-mm-ss')  # Specifies a specific log directory's model to use.
