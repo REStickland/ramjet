@@ -13,6 +13,7 @@ from ramjet.models import ConvolutionalLstm
 from ramjet.photometric_database.microlensing_label_per_time_step_database import MicrolensingLabelPerTimeStepDatabase
 from tqdm import tqdm
 
+tf.get_logger().setLevel('ERROR')
 
 # Set these paths to the correct paths.
 meta_data_path = Path('data/moa_microlensing/candlist_RADec.dat.feather')
