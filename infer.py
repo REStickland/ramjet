@@ -6,7 +6,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import tensorflow as tf
 from pathlib import Path
 import pandas as pd
-
+import matplotlib
+#"non-interactive" matplotlib backend
+matplotlib.use('Agg')
 from ramjet.analysis.lightcurve_visualizer import plot_lightcurve
 from ramjet.analysis.model_loader import get_latest_log_directory
 from ramjet.models import ConvolutionalLstm
