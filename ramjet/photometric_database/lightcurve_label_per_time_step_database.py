@@ -1,4 +1,6 @@
 """Code for representing a database of lightcurves for binary classification with a single label per time step."""
+import multiprocessing
+import os
 from abc import abstractmethod
 
 import numpy as np
@@ -18,6 +20,10 @@ class LightcurveLabelPerTimeStepDatabase(LightcurveDatabase):
         self.time_steps_per_example = 6400
         self.length_multiple_base = 32
         self.batch_size = 100
+        self.training_input_queue: multiprocessing.Queue = None
+        self.training_output_queue: multiprocessing.Queue = None
+        self.validation_input_queue: multiprocessing.Queue = None
+        self.validation_output_queue: multiprocessing.Queue = None
 
     def training_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
         """
@@ -26,12 +32,19 @@ class LightcurveLabelPerTimeStepDatabase(LightcurveDatabase):
         :param example_path_tensor: The tensor containing the path to the example to load.
         :return: The example and its corresponding label.
         """
-        example, label = self.general_preprocessing(example_path_tensor)
-        example, label = example.numpy(), label.numpy()
-        example, label = self.make_uniform_length_requiring_positive(
-            example, label, self.time_steps_per_example, required_length_multiple_base=self.length_multiple_base
-        )
+        example_path = example_path_tensor.numpy().decode('utf-8')
+        self.training_input_queue.put(example_path)
+        example, label = self.training_output_queue.get()
         return tf.convert_to_tensor(example, dtype=tf.float32), tf.convert_to_tensor(label, dtype=tf.float32)
+
+    def training_preprocessing_job(self, input_queue, output_queue):
+        while True:
+            example_path_tensor = input_queue.get()
+            example, label = self.general_preprocessing(example_path_tensor)
+            example, label = self.make_uniform_length_requiring_positive(
+                example, label, self.time_steps_per_example, required_length_multiple_base=self.length_multiple_base
+            )
+            output_queue.put((example, label))
 
     def evaluation_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
         """
@@ -40,15 +53,22 @@ class LightcurveLabelPerTimeStepDatabase(LightcurveDatabase):
         :param example_path_tensor: The tensor containing the path to the example to load.
         :return: The example and its corresponding label.
         """
-        example, label = self.general_preprocessing(example_path_tensor)
-        example, label = example.numpy(), label.numpy()
-        example, label = self.make_uniform_length_requiring_positive(
-            example, label, required_length_multiple_base=self.length_multiple_base, evaluation=True
-        )
+        example_path = example_path_tensor.numpy().decode('utf-8')
+        self.validation_input_queue.put(example_path)
+        example, label = self.validation_output_queue.get()
         return tf.convert_to_tensor(example, dtype=tf.float32), tf.convert_to_tensor(label, dtype=tf.float32)
 
+    def evaluation_preprocessing_job(self, input_queue, output_queue):
+        while True:
+            example_path_tensor = input_queue.get()
+            example, label = self.general_preprocessing(example_path_tensor)
+            example, label = self.make_uniform_length_requiring_positive(
+                example, label, required_length_multiple_base=self.length_multiple_base, evaluation=True
+            )
+            output_queue.put((example, label))
+
     @abstractmethod
-    def general_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
+    def general_preprocessing(self, example_path: str) -> (np.ndarray, np.ndarray):
         """
         Loads and preprocesses the data.
 

@@ -3,6 +3,7 @@ import datetime
 import os
 import tensorflow as tf
 from tensorflow.python.keras import callbacks
+import multiprocessing
 
 from ramjet.losses import PerTimeStepBinaryCrossEntropy
 from ramjet.models import ConvolutionalLstm
@@ -12,6 +13,7 @@ from ramjet.photometric_database.microlensing_label_per_time_step_database impor
 def train():
     """Runs the training."""
     # Basic training settings.
+    multiprocessing.set_start_method('spawn')
     model = ConvolutionalLstm()
     database = MicrolensingLabelPerTimeStepDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.

@@ -2,6 +2,7 @@
 Code for representing a database for microlensing with lightcurves for binary classification with a single label per
 time step.
 """
+import multiprocessing
 from pathlib import Path
 from typing import Union, List
 
@@ -19,6 +20,25 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase):
     """
     def __init__(self, data_directory='data/moa_microlensing'):
         super().__init__(data_directory=data_directory)
+
+    def spawn_processes(self):
+        training_input_queue = multiprocessing.Queue()
+        training_output_queue = multiprocessing.Queue()
+        validation_input_queue = multiprocessing.Queue()
+        validation_output_queue = multiprocessing.Queue()
+        for _ in range(16):
+            process = multiprocessing.Process(target=self.training_preprocessing_job,
+                                              args=(training_input_queue, training_output_queue))
+            process.start()
+        for _ in range(16):
+            process = multiprocessing.Process(target=self.evaluation_preprocessing_job,
+                                              args=(validation_input_queue, validation_output_queue))
+            process.start()
+        self.training_input_queue = training_input_queue
+        self.training_output_queue = training_output_queue
+        self.validation_input_queue = validation_input_queue
+        self.validation_output_queue = validation_output_queue
+
 
     @staticmethod
     def load_microlensing_meta_data(meta_data_file_path: str) -> pd.DataFrame:
@@ -205,20 +225,24 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase):
         training_dataset = self.get_ratio_enforced_dataset(positive_training_dataset, negative_training_dataset,
                                                            positive_to_negative_data_ratio=1)
         validation_dataset = positive_validation_dataset.concatenate(negative_validation_dataset)
-        if self.trial_directory is not None:
-            self.log_dataset_file_names(training_dataset, dataset_name='training')
-            self.log_dataset_file_names(validation_dataset, dataset_name='validation')
-        training_dataset = training_dataset.shuffle(buffer_size=len(list(training_dataset)))
-        training_preprocessor = lambda file_path: tuple(tf.py_function(self.training_preprocessing,
-                                                                       [file_path], [tf.float32, tf.float32]))
-        training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=16)
-        training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=16)
-        validation_preprocessor = lambda file_path: tuple(tf.py_function(self.evaluation_preprocessing,
-                                                                         [file_path], [tf.float32, tf.float32]))
-        validation_dataset = validation_dataset.map(validation_preprocessor, num_parallel_calls=16)
-        validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=16)
+        self.spawn_processes()
+        with tf.device('/CPU:0'):
+            if self.trial_directory is not None:
+                self.log_dataset_file_names(training_dataset, dataset_name='training')
+                self.log_dataset_file_names(validation_dataset, dataset_name='validation')
+            training_dataset = training_dataset.shuffle(buffer_size=len(list(training_dataset)))
+            training_preprocessor = lambda file_path: tuple(tf.py_function(self.training_preprocessing,
+                                                                           [file_path], [tf.float32, tf.float32]))
+            training_dataset = training_dataset.map(training_preprocessor,
+                                                    num_parallel_calls=32)
+            training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
+            validation_preprocessor = lambda file_path: tuple(tf.py_function(self.evaluation_preprocessing,
+                                                                             [file_path], [tf.float32, tf.float32]))
+            validation_dataset = validation_dataset.map(validation_preprocessor,
+                                                        num_parallel_calls=32)
+            validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 2], [None])).prefetch(
+                buffer_size=tf.data.experimental.AUTOTUNE)
         return training_dataset, validation_dataset
 
     def is_positive(self, example_path):
@@ -230,14 +254,13 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase):
         """
         return self.check_if_meta_data_exists_for_lightcurve_file_path(example_path, self.meta_data_frame)
 
-    def general_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
+    def general_preprocessing(self, example_path: str) -> (tf.Tensor, tf.Tensor):
         """
         Loads and preprocesses the data.
 
         :param example_path_tensor: The tensor containing the path to the example to load.
         :return: The example and its corresponding label.
         """
-        example_path = example_path_tensor.numpy().decode('utf-8')
         example_data_frame = pd.read_feather(example_path, columns=['HJD', 'flux'])
         fluxes = example_data_frame['flux'].values
         fluxes = self.normalize(fluxes)
@@ -252,4 +275,4 @@ class MicrolensingLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase):
                                                                                 threshold=1.1)
         else:
             label = np.zeros_like(fluxes)
-        return tf.convert_to_tensor(example, dtype=tf.float32), tf.convert_to_tensor(label, dtype=tf.float32)
+        return example, label
