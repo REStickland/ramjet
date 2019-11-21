@@ -46,4 +46,6 @@ for example_path in tqdm(example_paths):
     label, prediction = database.inference_postprocessing(label, prediction, times.shape[0])
     thresholded_prediction = prediction > 0.5  # Can threshold on some probability.
     # Can plot thresholded_predictions and fluxes here.
-    plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'inference_plots/{example_path}.png')
+    if len(fluxes) >= 50.0:
+        if prediction >= 90.0:
+            plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'inference_plots/{example_path}.png')
