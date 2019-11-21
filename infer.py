@@ -5,6 +5,7 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 #follows normally
 import tensorflow as tf
 from pathlib import Path
+import numpy as np
 import pandas as pd
 import matplotlib
 #"non-interactive" matplotlib backend
@@ -46,6 +47,6 @@ for example_path in tqdm(example_paths):
     label, prediction = database.inference_postprocessing(label, prediction, times.shape[0])
     thresholded_prediction = prediction > 0.5  # Can threshold on some probability.
     # Can plot thresholded_predictions and fluxes here.
-    if len(fluxes) >= 50.0:
-        if prediction >= 90.0:
-            plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'inference_plots/{example_path}.png')
+    microlensing_step = prediction >= 0.9
+    if np.sum(microlensing_step) >= 50:
+        plot_lightcurve(times, fluxes, label, prediction, title=example_path, save_path=f'inference_plots/{example_path}.png')
