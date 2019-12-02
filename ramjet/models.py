@@ -254,34 +254,38 @@ class ConvolutionalLstm(Model):
         super().__init__()
         leaky_relu = LeakyReLU(alpha=0.01)
         l2_regularizer = l2(0.001)
-        self.convolution0 = Conv1D(8, kernel_size=4, strides=2, activation=leaky_relu,
+        self.convolution0 = Conv1D(4, kernel_size=4, strides=2, activation=leaky_relu,
                                    kernel_regularizer=l2_regularizer, padding='same')
-        self.convolution1 = Conv1D(16, kernel_size=4, strides=2, activation=leaky_relu,
+        self.convolution1 = Conv1D(8, kernel_size=4, strides=2, activation=leaky_relu,
                                    kernel_regularizer=l2_regularizer, padding='same')
-        self.batch_norm_c1 = BatchNormalization(renorm=True)
-        self.convolution2 = Conv1D(32, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_c1 = BatchNormalization()
+        self.convolution2 = Conv1D(16, kernel_size=4, strides=2, activation=leaky_relu,
                                    kernel_regularizer=l2_regularizer, padding='same')
-        self.batch_norm_c2 = BatchNormalization(renorm=True)
-        self.convolution3 = Conv1D(64, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_c2 = BatchNormalization()
+        self.convolution3 = Conv1D(32, kernel_size=4, strides=2, activation=leaky_relu,
                                    kernel_regularizer=l2_regularizer, padding='same')
-        self.batch_norm_c3 = BatchNormalization(renorm=True)
-        self.convolution4 = Conv1D(64, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_c3 = BatchNormalization()
+        self.convolution4 = Conv1D(32, kernel_size=4, strides=2, activation=leaky_relu,
                                    kernel_regularizer=l2_regularizer, padding='same')
-        self.lstm0 = Bidirectional(LSTM(64, return_sequences=True))
-        self.lstm1 = Bidirectional(LSTM(64, return_sequences=True))
-        self.lstm2 = Bidirectional(LSTM(64, return_sequences=True))
-        self.transposed_convolution0 = Conv1DTranspose(64, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_c4 = BatchNormalization()
+        self.lstm0 = Bidirectional(LSTM(32, return_sequences=True, kernel_regularizer=l2_regularizer))
+        self.batch_norm_l0 = BatchNormalization()
+        self.lstm1 = Bidirectional(LSTM(32, return_sequences=True, kernel_regularizer=l2_regularizer))
+        self.batch_norm_l1 = BatchNormalization()
+        self.lstm2 = Bidirectional(LSTM(32, return_sequences=True, kernel_regularizer=l2_regularizer))
+        self.batch_norm_l2 = BatchNormalization()
+        self.transposed_convolution0 = Conv1DTranspose(32, kernel_size=4, strides=2, activation=leaky_relu,
                                                        kernel_regularizer=l2_regularizer, padding='same')
-        self.batch_norm_t0 = BatchNormalization(renorm=True)
-        self.transposed_convolution1 = Conv1DTranspose(64, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_t0 = BatchNormalization()
+        self.transposed_convolution1 = Conv1DTranspose(32, kernel_size=4, strides=2, activation=leaky_relu,
                                                        kernel_regularizer=l2_regularizer, padding='same')
-        self.batch_norm_t1 = BatchNormalization(renorm=True)
-        self.transposed_convolution2 = Conv1DTranspose(32, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_t1 = BatchNormalization()
+        self.transposed_convolution2 = Conv1DTranspose(16, kernel_size=4, strides=2, activation=leaky_relu,
                                                        kernel_regularizer=l2_regularizer, padding='same')
-        self.batch_norm_t2 = BatchNormalization(renorm=True)
-        self.transposed_convolution3 = Conv1DTranspose(16, kernel_size=4, strides=2, activation=leaky_relu,
+        self.batch_norm_t2 = BatchNormalization()
+        self.transposed_convolution3 = Conv1DTranspose(8, kernel_size=4, strides=2, activation=leaky_relu,
                                                        kernel_regularizer=l2_regularizer, padding='same')
-        self.transposed_convolution4 = Conv1DTranspose(8, kernel_size=4, strides=2, activation=leaky_relu,
+        self.transposed_convolution4 = Conv1DTranspose(4, kernel_size=4, strides=2, activation=leaky_relu,
                                                        kernel_regularizer=l2_regularizer, padding='same')
         self.prediction_layer = Conv1D(1, kernel_size=1, activation=sigmoid)
         self.reshape = Reshape([-1])
@@ -296,9 +300,13 @@ class ConvolutionalLstm(Model):
         x = self.convolution3(x)
         x = self.batch_norm_c3(x)
         x = self.convolution4(x)
+        x = self.batch_norm_c4(x)
         x = self.lstm0(x)
+        x = self.batch_norm_l0(x)
         x = self.lstm1(x)
+        x = self.batch_norm_l1(x)
         x = self.lstm2(x)
+        x = self.batch_norm_l2(x)
         x = self.transposed_convolution0(x)
         x = self.batch_norm_t0(x)
         x = self.transposed_convolution1(x)
