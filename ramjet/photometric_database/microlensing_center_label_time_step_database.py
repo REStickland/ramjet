@@ -97,7 +97,6 @@ class MicrolensingCenterLabelPerTimeStepDatabase(MicrolensingLabelPerTimeStepDat
         :return: The example and its corresponding label.
         """
         example_path = example_path_tensor.numpy().decode('utf-8')
-        self.training_example_paths_set.add(example_path)
         self.training_input_queue.put(example_path)
         example, label = self.training_output_queue.get()
         return tf.convert_to_tensor(example, dtype=tf.float32), tf.convert_to_tensor(label, dtype=tf.float32)
