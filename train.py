@@ -6,6 +6,7 @@ from tensorflow.python.keras import callbacks
 
 from ramjet.losses import PerTimeStepBinaryCrossEntropy
 from ramjet.models import ConvolutionalLstm
+from ramjet.photometric_database.self_lensing_binary_database import SelfLensingBinaryDatabase
 from ramjet.photometric_database.toi_lightcurve_database import ToiLightcurveDatabase
 
 
@@ -13,7 +14,7 @@ def train():
     """Runs the training."""
     # Basic training settings.
     model = ConvolutionalLstm()
-    database = ToiLightcurveDatabase()
+    database = SelfLensingBinaryDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
     trial_name = 'baseline'
@@ -30,7 +31,7 @@ def train():
     # Prepare training data and metrics.
     training_dataset, validation_dataset = database.generate_datasets()
     optimizer = tf.optimizers.Adam(learning_rate=1e-4)
-    loss_metric = PerTimeStepBinaryCrossEntropy(name='Loss', positive_weight=50)
+    loss_metric = PerTimeStepBinaryCrossEntropy(name='Loss', positive_weight=1)
     metrics = [tf.metrics.BinaryAccuracy(name='Accuracy'), tf.metrics.Precision(name='Precision'),
                tf.metrics.Recall(name='Recall'),
                tf.metrics.SpecificityAtSensitivity(0.9, name='Specificity_at_90_percent_sensitivity'),
@@ -38,6 +39,7 @@ def train():
 
     # Compile and train model.
     model.compile(optimizer=optimizer, loss=loss_metric, metrics=metrics)
+    model.run_eagerly = True
     try:
         model.fit(training_dataset, epochs=epochs_to_run, validation_data=validation_dataset,
                   callbacks=[tensorboard_callback, model_checkpoint_callback])

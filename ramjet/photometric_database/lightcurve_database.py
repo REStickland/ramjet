@@ -23,27 +23,21 @@ class LightcurveDatabase(ABC):
     def log_dataset_file_names(self, dataset: tf.data.Dataset, dataset_name: str):
         """Saves the names of the files used in a dataset to a CSV file in the trail directory."""
         os.makedirs(self.trial_directory, exist_ok=True)
-        training_example_paths = [example.numpy().decode('utf-8') for example in list(dataset)]
-        series = pd.Series(training_example_paths)
+        if isinstance(dataset, tf.data.Dataset):
+            example_paths = [example.numpy().decode('utf-8') for example in list(dataset)]
+        else:
+            example_paths = dataset
+        series = pd.Series(example_paths)
         series.to_csv(os.path.join(self.trial_directory, f'{dataset_name}.csv'), header=False, index=False)
 
     @staticmethod
-    def normalize_log_0_to_1(lightcurve: np.ndarray) -> np.ndarray:
+    def normalize(lightcurve: np.ndarray) -> np.ndarray:
         """Normalizes from 0 to 1 on the logarithm of the lightcurve."""
         lightcurve -= np.min(lightcurve)
         lightcurve = np.log1p(lightcurve)
         array_max = np.max(lightcurve)
         if array_max != 0:
             lightcurve /= array_max
-        return lightcurve
-
-    @staticmethod
-    def normalize(lightcurve: np.ndarray) -> np.ndarray:
-        """Normalizes light curve using quantile. quantile_10 (10%) at -1 and quantile_90 (90%) at 1.
-        """
-        quantile_10 = np.percentile(lightcurve, 10)
-        quantile_90 = np.percentile(lightcurve, 90)
-        lightcurve = ((lightcurve - quantile_10) / ((quantile_90 - quantile_10) / 2)) - 1
         return lightcurve
 
     @staticmethod
