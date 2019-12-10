@@ -23,8 +23,11 @@ class LightcurveDatabase(ABC):
     def log_dataset_file_names(self, dataset: tf.data.Dataset, dataset_name: str):
         """Saves the names of the files used in a dataset to a CSV file in the trail directory."""
         os.makedirs(self.trial_directory, exist_ok=True)
-        training_example_paths = [example.numpy().decode('utf-8') for example in list(dataset)]
-        series = pd.Series(training_example_paths)
+        if isinstance(dataset, tf.data.Dataset):
+            example_paths = [example.numpy().decode('utf-8') for example in list(dataset)]
+        else:
+            example_paths = dataset
+        series = pd.Series(example_paths)
         series.to_csv(os.path.join(self.trial_directory, f'{dataset_name}.csv'), header=False, index=False)
 
     @staticmethod
@@ -107,14 +110,21 @@ class LightcurveDatabase(ABC):
                                                             tf.data.Dataset, tf.data.Dataset):
         """Creates a TensorFlow Dataset from a list of file names and desired label for those files."""
         example_paths = [str(example_path) for example_path in example_paths]
-        np.random.seed(0)
-        np.random.shuffle(example_paths)
-        number_of_chunks = int(1 / self.validation_ratio)  # In this example, 5 chunks.
-        chunks = np.array_split(example_paths, number_of_chunks)
-        validation_chunk_index = 0  # This value should be changeable to select different validation sets.
-        validation_paths = chunks[validation_chunk_index]
-        training_chunks = np.delete(chunks, validation_chunk_index, axis=0)
-        training_paths = np.concatenate(training_chunks)
+        chunk_ratio = self.validation_ratio
+        validation_chunk_index = 0
+        training_paths, validation_paths = self.extract_chunk_and_remainder(example_paths, chunk_ratio,
+                                                                            validation_chunk_index)
         validation_dataset = tf.data.Dataset.from_tensor_slices(validation_paths)
         training_dataset = tf.data.Dataset.from_tensor_slices(training_paths)
         return training_dataset, validation_dataset
+
+    def extract_chunk_and_remainder(self, array_to_extract_from: Union[List, np.ndarray], chunk_ratio: float,
+                                    chunk_to_extract_index: int = 0) -> (np.ndarray, np.ndarray):
+        np.random.seed(0)
+        np.random.shuffle(array_to_extract_from)
+        number_of_chunks = int(1 / chunk_ratio)
+        chunks = np.array_split(array_to_extract_from, number_of_chunks)
+        extracted_chunk = chunks[chunk_to_extract_index]
+        remaining_chunks = np.delete(chunks, chunk_to_extract_index, axis=0)
+        remainder = np.concatenate(remaining_chunks)
+        return remainder, extracted_chunk
