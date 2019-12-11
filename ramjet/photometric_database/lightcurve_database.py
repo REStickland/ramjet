@@ -111,7 +111,7 @@ class LightcurveDatabase(ABC):
         np.random.shuffle(example_paths)
         number_of_chunks = int(1 / self.validation_ratio)  # In this example, 5 chunks.
         chunks = np.array_split(example_paths, number_of_chunks)
-        validation_chunk_index = 2  # This value should be changeable to select different validation sets.
+        validation_chunk_index = 0  # This value should be changeable to select different validation sets.
         validation_paths = chunks[validation_chunk_index]
         training_chunks = np.delete(chunks, validation_chunk_index, axis=0)
         training_paths = np.concatenate(training_chunks)

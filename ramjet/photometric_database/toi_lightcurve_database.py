@@ -26,13 +26,11 @@ class ToiLightcurveDatabase(TessTransitLightcurveLabelPerTimeStepDatabase):
         """
         Generates the training and validation datasets.
 
-        :param positive_data_directory: The path to the directory containing the positive example files.
-        :param negative_data_directory: The path to the directory containing the negative example files.
-        :param meta_data_file_path: The path to the microlensing meta data file.
         :return: The training and validation datasets.
         """
         self.obtain_meta_data_frame_for_available_lightcurves()
         positive_example_paths = self.meta_data_frame['lightcurve_path'].tolist()
+        positive_example_paths = list(set(positive_example_paths))  # Remove duplicates from multi-planet targets.
         print(f'{len(positive_example_paths)} positive examples.')
         all_lightcurve_paths = list(map(str, self.lightcurve_directory.glob('*lc.fits')))
         negative_example_paths = list(set(all_lightcurve_paths) - set(self.meta_data_frame['lightcurve_path'].tolist()))
@@ -61,6 +59,9 @@ class ToiLightcurveDatabase(TessTransitLightcurveLabelPerTimeStepDatabase):
         return training_dataset, validation_dataset
 
     def obtain_meta_data_frame_for_available_lightcurves(self):
+        """
+        Prepares the meta data frame with the transit information based on known planet transits.
+        """
         dispositions = self.load_toi_dispositions_in_project_format()
         confirmed_planet_dispositions = dispositions[dispositions['disposition'].isin(['CP', 'KP']) &
                                                      dispositions['transit_epoch'].notna() &
@@ -143,6 +144,11 @@ class ToiLightcurveDatabase(TessTransitLightcurveLabelPerTimeStepDatabase):
         print('Database ready.')
 
     def load_toi_dispositions_in_project_format(self) -> pd.DataFrame:
+        """
+        Loads the ExoFOP TOI table information from CSV to a data frame using a project consistent naming scheme.
+
+        :return:
+        """
         columns_to_use = ['TIC ID', 'TFOPWG Disposition', 'Planet Num', 'Epoch (BJD)', 'Period (days)',
                           'Duration (hours)', 'Sectors']
         dispositions = pd.read_csv(self.toi_dispositions_path, usecols=columns_to_use)
