@@ -59,7 +59,7 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
         training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=16)
         training_dataset = training_dataset.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x))
         training_unstack_preprocessor = lambda example_and_label_tensor: tuple(tf.py_function(self.unstack_example_and_label,
-                                                                               [example_and_label_tensor], [tf.float32, tf.float32]))
+                                                                                              [example_and_label_tensor], [tf.float32, tf.float32]))
         training_dataset = training_dataset.map(training_unstack_preprocessor, num_parallel_calls=16)
         training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE)
@@ -227,6 +227,9 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
             file_path = Path(file_path_string)
             file_path.rename(self.lightcurve_directory.joinpath(file_path.name))
         print('Database ready.')
+
+    def general_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
+        raise NotImplementedError
 
 
 if __name__ == '__main__':
