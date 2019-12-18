@@ -10,6 +10,8 @@ import pandas as pd
 import requests
 import tensorflow as tf
 from pathlib import Path
+
+from astroquery.mast import Catalogs
 from scipy.interpolate import interp1d
 
 from ramjet.photometric_database.tess_lightcurve_label_per_time_step_database import \
@@ -58,8 +60,9 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
                                                                  [file_path], [tf.float32])
         training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=16)
         training_dataset = training_dataset.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x))
-        training_unstack_preprocessor = lambda example_and_label_tensor: tuple(tf.py_function(self.unstack_example_and_label,
-                                                                                              [example_and_label_tensor], [tf.float32, tf.float32]))
+        training_unstack_preprocessor = lambda example_and_label_tensor: tuple(
+            tf.py_function(self.unstack_example_and_label,
+                           [example_and_label_tensor], [tf.float32, tf.float32]))
         training_dataset = training_dataset.map(training_unstack_preprocessor, num_parallel_calls=16)
         training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE)
@@ -67,8 +70,9 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
                                                                    [file_path], [tf.float32])
         validation_dataset = validation_dataset.map(validation_preprocessor, num_parallel_calls=4)
         validation_dataset = validation_dataset.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x))
-        validation_unstack_preprocessor = lambda example_and_label_tensor: tuple(tf.py_function(self.unstack_example_and_label,
-                                                                                                [example_and_label_tensor], [tf.float32, tf.float32]))
+        validation_unstack_preprocessor = lambda example_and_label_tensor: tuple(
+            tf.py_function(self.unstack_example_and_label,
+                           [example_and_label_tensor], [tf.float32, tf.float32]))
         validation_dataset = validation_dataset.map(validation_unstack_preprocessor, num_parallel_calls=16)
         validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 2], [None])).prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE)
@@ -194,7 +198,8 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
             synthetic_signal.to_feather(synthetic_signal_path)
             synthetic_signal_txt_path.unlink()  # Delete old file.
 
-    def download_and_prepare_database(self, number_of_negative_lightcurves_to_download=10000):
+    def download_and_prepare_database(self, number_of_negative_lightcurves_to_download=10000,
+                                      magnitude_filter: (float, float) = None):
         print('Clearing data directory...')
         self.clear_data_directory()
         print('Downloading synthetic signals...')
@@ -207,6 +212,13 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
         self.convert_raw_synthetic_data_to_project_format()
         print('Downloading TESS observation list...')
         tess_observations = self.get_all_tess_time_series_observations()
+        if magnitude_filter is not None:
+            timeseries_tic_entries = self.get_all_tic_entries_by_tic_ids(
+                tic_ids=tess_observations['target_name'].values)
+            magnitude_selected_tic_entries = timeseries_tic_entries[
+                timeseries_tic_entries['Tmag'].between(*magnitude_filter)]
+            tess_observations = self.get_all_tess_time_series_observations(
+                {'target_name': magnitude_selected_tic_entries['ID'].values})
         single_sector_observations = self.get_single_sector_observations(tess_observations)
         single_sector_observations = self.add_sector_column_based_on_single_sector_obs_id(single_sector_observations)
         single_sector_observations['tic_id'] = single_sector_observations['target_name'].astype(int)

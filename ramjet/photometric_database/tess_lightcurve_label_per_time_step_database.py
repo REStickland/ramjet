@@ -3,14 +3,14 @@ Code for a database of TESS lightcurves with a label per time step.
 """
 import shutil
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Dict
 
 import numpy as np
 import pandas as pd
 import tensorflow as tf
 from astropy.io import fits
 from astropy.table import Table
-from astroquery.mast import Observations, conf
+from astroquery.mast import Observations, Catalogs
 from astroquery.exceptions import TimeoutError as AstroQueryTimeoutError
 from requests.exceptions import ConnectionError
 
@@ -25,8 +25,10 @@ class TessLightcurveLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase)
     def __init__(self, data_directory='data/tess'):
         super().__init__(data_directory=data_directory)
         self.lightcurve_directory = self.data_directory.joinpath('lightcurves')
-        conf.timeout = 1200
-        conf.pagesize = 10000
+        Observations.timeout = 1200
+        Observations.pagesize = 10000
+        Catalogs.timeout = 1200
+        Catalogs.pagesize = 10000
 
     def create_data_directories(self):
         """
@@ -59,20 +61,33 @@ class TessLightcurveLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase)
         return list(self.lightcurve_directory.glob('*.fits'))
 
     @staticmethod
-    def get_all_tess_time_series_observations() -> pd.DataFrame:
+    def get_all_tess_time_series_observations(criteria_dictionary: Dict = None) -> pd.DataFrame:
         """
         Gets all TESS time-series observations, limited to science data product level. Repeats download attempt on
         error.
         """
+        if criteria_dictionary is None:
+            criteria_dictionary = {}
         tess_observations = None
         while tess_observations is None:
             try:
                 # noinspection SpellCheckingInspection
                 tess_observations = Observations.query_criteria(obs_collection='TESS', dataproduct_type='timeseries',
-                                                                calib_level=3)  # Science data product level.
+                                                                calib_level=3, **criteria_dictionary)
             except (AstroQueryTimeoutError, ConnectionError):
                 print('Error connecting to MAST. They have occasional downtime. Trying again...')
         return tess_observations.to_pandas()
+
+    @staticmethod
+    def get_all_tic_entries_by_tic_ids(tic_ids: List[int]) -> pd.DataFrame:
+        tic_entries = None
+        while tic_entries is None:
+            try:
+                # noinspection SpellCheckingInspection
+                tic_entries = Catalogs.query_criteria(catalog='Tic', ID=tic_ids)
+            except (AstroQueryTimeoutError, ConnectionError):
+                print('Error connecting to MAST. They have occasional downtime. Trying again...')
+        return tic_entries.to_pandas()
 
     @staticmethod
     def get_product_list(observations: pd.DataFrame) -> pd.DataFrame:
