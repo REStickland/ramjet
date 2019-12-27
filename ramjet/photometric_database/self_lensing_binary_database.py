@@ -106,7 +106,7 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
         signal_magnifications = signal_dataframe['Magnification'].values
         signal_times = signal_dataframe['Time (hours)'].values
         signal_times /= 24  # Convert from hours to days.
-        signal_fluxes = (signal_magnifications * median_flux) - median_flux
+        signal_fluxes = (signal_magnifications - 1) * median_flux
         time_differences = np.diff(times, prepend=times[0])
         signal_flux_interpolator = interp1d(signal_times, signal_fluxes, bounds_error=True)
         interpolated_signal_fluxes = signal_flux_interpolator(time_differences)
