@@ -1,7 +1,12 @@
 """Code for inference on the contents of a directory."""
+#Tells the  infer script not to use the GPU:
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+#follows normally
 import pandas as pd
 import tensorflow as tf
 from pathlib import Path
+import numpy as np
 
 from ramjet.analysis.lightcurve_visualizer import plot_lightcurve
 from ramjet.analysis.model_loader import get_latest_log_directory
@@ -29,4 +34,8 @@ for example_path in example_paths:
     example = database.preprocess_and_augment_lightcurve(fluxes)
     example_tensor = tf.convert_to_tensor(example)
     prediction = model.predict(tf.expand_dims(example_tensor, axis=0))[0]
-    # plot_lightcurve(times, fluxes, title=example_path, save_path=f'{example_path}.png')
+    # Can plot thresholded_predictions and fluxes here.
+    microlensing_step = prediction >= 0.9
+    if microlensing_step:
+        print(example_path)
+        plot_lightcurve(times, fluxes, title=example_path, save_path=f'infer_plot/{example_path}.png')
