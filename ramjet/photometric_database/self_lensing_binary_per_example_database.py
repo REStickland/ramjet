@@ -11,22 +11,20 @@ import pandas as pd
 import requests
 import tensorflow as tf
 from pathlib import Path
-
-from astroquery.mast import Catalogs
 from scipy.interpolate import interp1d
 
-from ramjet.photometric_database.py_mapper import map_py_function_to_dataset
 from ramjet.photometric_database.tess_lightcurve_label_per_time_step_database import \
     TessLightcurveLabelPerTimeStepDatabase
 
 
-class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
+class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase):
     """
     A database of self lensing binary synthetic data overlaid on real TESS data.
     """
 
     def __init__(self, data_directory='data/self_lensing_binaries'):
         super().__init__(data_directory=data_directory)
+        self.time_steps_per_example = 20000
         self.synthetic_signals_directory: Path = Path(self.data_directory, 'synthetic_signals')
         self.training_synthetic_signal_paths = np.array([])
 
@@ -40,10 +38,8 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
         all_signal_paths = list(map(str, self.synthetic_signals_directory.glob('*.feather')))
         training_lightcurve_paths, validation_lightcurve_paths = self.extract_chunk_and_remainder(all_lightcurve_paths,
                                                                                                   self.validation_ratio)
-        # training_signal_paths, validation_signal_paths = self.extract_chunk_and_remainder(all_signal_paths,
-        #                                                                                   self.validation_ratio)
-        training_signal_paths = all_signal_paths
-        validation_signal_paths = all_signal_paths
+        training_signal_paths, validation_signal_paths = self.extract_chunk_and_remainder(all_signal_paths,
+                                                                                          self.validation_ratio)
         print(f'{len(training_lightcurve_paths)} training lightcurves.')
         print(f'{len(validation_lightcurve_paths)} validation lightcurves.')
         print(f'{len(training_signal_paths)} training synthetic signals.')
@@ -60,24 +56,24 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
             self.log_dataset_file_names(training_signal_paths, dataset_name='training_synthetic_signals')
             self.log_dataset_pair_file_names(validation_dataset, dataset_name='validation')
         training_dataset = training_dataset.shuffle(buffer_size=len(list(training_dataset)))
-        training_dataset = map_py_function_to_dataset(training_dataset, self.dual_training_preprocessing,
-                                                      number_of_parallel_calls=8,
-                                                      output_types=[tf.float32])
+        training_preprocessor = lambda file_path: tf.py_function(self.dual_training_preprocessing,
+                                                                 [file_path], [tf.float32])
+        training_dataset = training_dataset.map(training_preprocessor, num_parallel_calls=16)
         training_dataset = training_dataset.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x))
-        training_dataset = map_py_function_to_dataset(training_dataset, self.unstack_example_and_label,
-                                                      number_of_parallel_calls=8,
-                                                      output_types=[tf.float32, tf.float32])
-        training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 2], [None])).prefetch(
+        training_unstack_preprocessor = lambda example_and_label_tensor: tuple(tf.py_function(self.unstack_example_and_label,
+                                                                               [example_and_label_tensor], [tf.float32, tf.float32]))
+        training_dataset = training_dataset.map(training_unstack_preprocessor, num_parallel_calls=16)
+        training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 1], [1])).prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE)
-        validation_dataset = map_py_function_to_dataset(validation_dataset, self.dual_evaluation_preprocessing,
-                                                        number_of_parallel_calls=8,
-                                                        output_types=[tf.float32, tf.float32])
+        validation_preprocessor = lambda file_path: tf.py_function(self.dual_evaluation_preprocessing,
+                                                                   [file_path], [tf.float32])
+        validation_dataset = validation_dataset.map(validation_preprocessor, num_parallel_calls=4)
         validation_dataset = validation_dataset.flat_map(lambda x: tf.data.Dataset.from_tensor_slices(x))
-        validation_dataset = map_py_function_to_dataset(validation_dataset, self.unstack_example_and_label,
-                                                        number_of_parallel_calls=8,
-                                                        output_types=[tf.float32, tf.float32])
-        validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 2], [None])).prefetch(
-            buffer_size=tf.data.experimental.AUTOTUNE)
+        validation_unstack_preprocessor = lambda example_and_label_tensor: tuple(tf.py_function(self.unstack_example_and_label,
+                                                                                                [example_and_label_tensor], [tf.float32, tf.float32]))
+        validation_dataset = validation_dataset.map(validation_unstack_preprocessor, num_parallel_calls=4)
+        validation_dataset = validation_dataset.padded_batch(1, padded_shapes=([None, 1], [1])).prefetch(
+            buffer_size=tf.data.experimental.AUTOTUNE )
         return training_dataset, validation_dataset
 
     def log_dataset_pair_file_names(self, dataset: tf.data.Dataset, dataset_name: str):
@@ -95,7 +91,9 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
     def unstack_example_and_label(self, example_and_label_tensor: tf.Tensor) -> (np.ndarray, np.ndarray):
         example_and_label = example_and_label_tensor.numpy()
         example = example_and_label[:, :2]
-        label = example_and_label[:, 2]
+        label = [example_and_label[0, 2]]
+        example = example[:, [0]]
+        example = np.real(np.fft.rfft(example, axis=0))
         example_tensor = tf.convert_to_tensor(example, dtype=tf.float32)
         label_tensor = tf.convert_to_tensor(label, dtype=tf.float32)
         return example_tensor, label_tensor
@@ -108,13 +106,13 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
         signal_magnifications = signal_dataframe['Magnification'].values
         signal_times = signal_dataframe['Time (hours)'].values
         signal_times /= 24  # Convert from hours to days.
-        signal_fluxes = (signal_magnifications - 1) * median_flux
+        signal_fluxes = (signal_magnifications * median_flux) - median_flux
         time_differences = np.diff(times, prepend=times[0])
         signal_flux_interpolator = interp1d(signal_times, signal_fluxes, bounds_error=True)
-        interpolated_signal_fluxes = signal_flux_interpolator(time_differences)
+        interpolated_signal_fluxes = signal_flux_interpolator(np.cumsum(time_differences))
         fluxes_with_injected_signal = fluxes + interpolated_signal_fluxes
-        # fluxes = self.normalize(fluxes)
-        # fluxes_with_injected_signal = self.normalize(fluxes_with_injected_signal)
+        fluxes = self.normalize(fluxes)
+        fluxes_with_injected_signal = self.normalize(fluxes_with_injected_signal)
         example = np.stack([fluxes, time_differences], axis=-1)
         example_with_injected_signal = np.stack([fluxes_with_injected_signal, time_differences], axis=-1)
         return example, np.zeros_like(fluxes), example_with_injected_signal, np.ones_like(fluxes)
@@ -138,7 +136,8 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
         examples_and_labels = self.dual_general_preprocessing(lightcurve_path, synthetic_signal_path)
         negative_example, negative_label, positive_example, positive_label = examples_and_labels
         negative_example, negative_label, positive_example, positive_label = self.make_uniform_length_in_uniform(
-            negative_example, negative_label, positive_example, positive_label, evaluation=True)
+            negative_example, negative_label, positive_example, positive_label, length=self.time_steps_per_example, evaluation=True)
+
         negative_example_and_label = np.concatenate([negative_example, np.expand_dims(negative_label, axis=-1)], axis=1)
         positive_example_and_label = np.concatenate([positive_example, np.expand_dims(positive_label, axis=-1)], axis=1)
         joint_examples_and_labels = np.stack([negative_example_and_label, positive_example_and_label], axis=0)
@@ -249,10 +248,7 @@ class SelfLensingBinaryDatabase(TessLightcurveLabelPerTimeStepDatabase):
             file_path.rename(self.lightcurve_directory.joinpath(file_path.name))
         print('Database ready.')
 
-    def general_preprocessing(self, example_path_tensor: tf.Tensor) -> (tf.Tensor, tf.Tensor):
-        raise NotImplementedError
-
 
 if __name__ == '__main__':
-    database = SelfLensingBinaryDatabase()
-    database.download_and_prepare_database()
+    database = SelfLensingBinaryPerExampleDatabase()
+    database.download_and_prepare_database(magnitude_filter=[-5, 9])

@@ -1,23 +1,27 @@
 """Code for running training."""
+import matplotlib
+matplotlib.use('Agg')
 import datetime
 import os
 import tensorflow as tf
 from tensorflow.python.keras import callbacks
+from tensorflow_core.python.keras.losses import BinaryCrossentropy
 
 from ramjet.losses import PerTimeStepBinaryCrossEntropy
-from ramjet.models import ConvolutionalLstm
+from ramjet.models import ConvolutionalLstm, SimpleLightcurveCnn
 from ramjet.photometric_database.self_lensing_binary_database import SelfLensingBinaryDatabase
+from ramjet.photometric_database.self_lensing_binary_per_example_database import SelfLensingBinaryPerExampleDatabase
 from ramjet.photometric_database.toi_lightcurve_database import ToiLightcurveDatabase
 
 
 def train():
     """Runs the training."""
     # Basic training settings.
-    model = ConvolutionalLstm()
-    database = SelfLensingBinaryDatabase()
+    model = SimpleLightcurveCnn()
+    database = SelfLensingBinaryPerExampleDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
-    trial_name = 'SLB, all synthetic in training, unnormalized rfft'
+    trial_name = 'SLB single label simple CNN, normalized rfft, fixed interpolation'
     logs_directory = 'logs'
 
     # Setup logging.
@@ -31,7 +35,7 @@ def train():
     # Prepare training data and metrics.
     training_dataset, validation_dataset = database.generate_datasets()
     optimizer = tf.optimizers.Adam(learning_rate=1e-4)
-    loss_metric = PerTimeStepBinaryCrossEntropy(name='Loss', positive_weight=1)
+    loss_metric = BinaryCrossentropy(name='Loss')
     metrics = [tf.metrics.BinaryAccuracy(name='Accuracy'), tf.metrics.Precision(name='Precision'),
                tf.metrics.Recall(name='Recall'),
                tf.metrics.SpecificityAtSensitivity(0.9, name='Specificity_at_90_percent_sensitivity'),
