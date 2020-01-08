@@ -94,7 +94,7 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
         example = example_and_label[:, :2]
         label = [example_and_label[0, 2]]
         example = example[:, [0]]
-        example = np.real(np.fft.rfft(example, axis=0))
+        # example = np.real(np.fft.rfft(example, axis=0))
         example_tensor = tf.convert_to_tensor(example, dtype=tf.float32)
         label_tensor = tf.convert_to_tensor(label, dtype=tf.float32)
         return example_tensor, label_tensor

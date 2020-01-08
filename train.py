@@ -21,7 +21,7 @@ def train():
     database = SelfLensingBinaryPerExampleDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
-    trial_name = 'SLB, normalized rfft, all signals in training'
+    trial_name = 'SLB, unnormalized, all signals in training'
     logs_directory = 'logs'
 
     # Setup logging.
