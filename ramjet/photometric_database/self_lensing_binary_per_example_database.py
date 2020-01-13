@@ -23,7 +23,7 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
     A database of self lensing binary synthetic data overlaid on real TESS data.
     """
 
-    def __init__(self, data_directory='data/self_lensing_binaries'):
+    def __init__(self, data_directory='data/self_lensing_binaries_infer'):
         super().__init__(data_directory=data_directory)
         self.time_steps_per_example = 20000
         self.synthetic_signals_directory: Path = Path(self.data_directory, 'synthetic_signals')
@@ -143,6 +143,17 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
         joint_examples_and_labels = np.stack([negative_example_and_label, positive_example_and_label], axis=0)
         return joint_examples_and_labels
 
+    def infer_preprocessing(self, lightcurve_path: Path) -> np.ndarray:
+        fluxes, times = self.load_fluxes_and_times_from_fits_file(lightcurve_path)
+        time_differences = np.diff(times, prepend=times[0])
+        fluxes = self.normalize(fluxes)
+        example = np.stack([fluxes, time_differences], axis=-1)
+        example = self.make_uniform_length_with_multiple(example, self.time_steps_per_example,
+                                                         required_length_multiple_base=self.length_multiple_base,
+                                                         evaluation=True)
+        example = example[:, [0]]
+        return example
+
     def make_uniform_length_in_uniform(self, negative_example, negative_label, positive_example, positive_label,
                                        length: Union[int, None] = None, evaluation: bool = False):
         negative_and_positive_arrays = np.concatenate([negative_example, np.expand_dims(negative_label, axis=-1),
@@ -251,4 +262,4 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
 
 if __name__ == '__main__':
     database = SelfLensingBinaryPerExampleDatabase()
-    database.download_and_prepare_database(magnitude_filter=[-5, 9])
+    database.download_and_prepare_database(magnitude_filter=[-5, 9], number_of_negative_lightcurves_to_download=300000)
