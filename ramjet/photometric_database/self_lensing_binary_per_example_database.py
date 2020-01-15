@@ -23,7 +23,7 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
     A database of self lensing binary synthetic data overlaid on real TESS data.
     """
 
-    def __init__(self, data_directory='data/self_lensing_binaries_infer'):
+    def __init__(self, data_directory='data/self_lensing_binaries'):
         super().__init__(data_directory=data_directory)
         self.time_steps_per_example = 20000
         self.synthetic_signals_directory: Path = Path(self.data_directory, 'synthetic_signals')
@@ -39,7 +39,9 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
         all_signal_paths = list(map(str, self.synthetic_signals_directory.glob('*.feather')))
         training_lightcurve_paths, validation_lightcurve_paths = self.extract_chunk_and_remainder(all_lightcurve_paths,
                                                                                                   self.validation_ratio)
-        training_signal_paths, validation_signal_paths = all_signal_paths, all_signal_paths
+        # training_signal_paths, validation_signal_paths = all_signal_paths, all_signal_paths
+        training_signal_paths, validation_signal_paths = self.extract_chunk_and_remainder(all_signal_paths,
+                                                                                          self.validation_ratio)
         print(f'{len(training_lightcurve_paths)} training lightcurves.')
         print(f'{len(validation_lightcurve_paths)} validation lightcurves.')
         print(f'{len(training_signal_paths)} training synthetic signals.')
@@ -262,4 +264,4 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
 
 if __name__ == '__main__':
     database = SelfLensingBinaryPerExampleDatabase()
-    database.download_and_prepare_database(magnitude_filter=[-5, 9], number_of_negative_lightcurves_to_download=300000)
+    database.download_and_prepare_database(magnitude_filter=[-5, 9], number_of_negative_lightcurves_to_download=100000)
