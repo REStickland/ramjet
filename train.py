@@ -5,7 +5,7 @@ import tensorflow as tf
 from tensorflow.python.keras import callbacks
 
 from ramjet.losses import PerTimeStepBinaryCrossEntropy
-from ramjet.models import ConvolutionalLstm
+from ramjet.models import SimpleLightcurveCnn, ConvolutionalLstm
 from ramjet.photometric_database.toi_lightcurve_database import ToiLightcurveDatabase
 
 #Tells the  infer script not to use the GPU:
@@ -19,7 +19,7 @@ def train():
     database = ToiLightcurveDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
-    trial_name = 'baseline'
+    trial_name = 'New_normalization_CNN_TOI'
     logs_directory = 'logs'
 
     # Setup logging.
