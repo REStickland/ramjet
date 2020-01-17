@@ -1,3 +1,7 @@
+#Tells the  infer script not to use the GPU:
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
 """Code for inference on the contents of a directory."""
 import tensorflow as tf
 from pathlib import Path
@@ -7,13 +11,13 @@ from ramjet.analysis.model_loader import get_latest_log_directory
 from ramjet.models import ConvolutionalLstm
 from ramjet.photometric_database.toi_lightcurve_database import ToiLightcurveDatabase
 
-saved_log_directory = get_latest_log_directory('logs')  # Uses the latest log directory's model.
-# saved_log_directory = Path('logs/baseline YYYY-MM-DD-hh-mm-ss')  # Specifies a specific log directory's model to use.
+# saved_log_directory = get_latest_log_directory('logs')  # Uses the latest log directory's model.
+saved_log_directory = Path('logs/TOI transits baseline ConvolutionalLSTM 2019-12-02-15-22-14')  # Specifies a specific log directory's model to use.
 
 print('Setting up dataset...')
 database = ToiLightcurveDatabase()
 database.obtain_meta_data_frame_for_available_lightcurves()
-example_paths = [str(database.lightcurve_directory.joinpath('tess2018319095959-s0005-0000000117979897-0125-s_lc.fits'))]
+example_paths = [str(database.lightcurve_directory.joinpath('tess2018292075959-s0004-0000000261136679-0124-s_lc.fits'))]
 # Uncomment below to run the inference for all validation files.
 # example_paths = pd.read_csv(saved_log_directory.joinpath('validation.csv'), header=None)[0].values
 
