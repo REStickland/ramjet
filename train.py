@@ -19,7 +19,7 @@ def train():
     database = ToiLightcurveDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
-    trial_name = 'New_normalization_TOI'
+    trial_name = 'New_normalization_TOI_PDCSAP_FLUX'
     logs_directory = 'logs'
 
     # Setup logging.

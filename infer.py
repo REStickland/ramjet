@@ -17,7 +17,7 @@ saved_log_directory = Path('logs/TOI transits baseline ConvolutionalLSTM 2019-12
 print('Setting up dataset...')
 database = ToiLightcurveDatabase()
 database.obtain_meta_data_frame_for_available_lightcurves()
-example_paths = [str(database.lightcurve_directory.joinpath('tess2018292075959-s0004-0000000261136679-0124-s_lc.fits'))]
+example_paths = [str(database.lightcurve_directory.joinpath('tess2018206045859-s0001-0000000261136679-0120-s_lc.fits'))]
 # Uncomment below to run the inference for all validation files.
 # example_paths = pd.read_csv(saved_log_directory.joinpath('validation.csv'), header=None)[0].values
 

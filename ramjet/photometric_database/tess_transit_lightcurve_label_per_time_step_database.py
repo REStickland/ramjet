@@ -237,8 +237,8 @@ class TessTransitLightcurveLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDa
         """
         hdu_list = fits.open(example_path)
         lightcurve = hdu_list[1].data  # Lightcurve information is in first extension table.
-        #fluxes = lightcurve['SAP_FLUX']
-        fluxes = lightcurve['PDCSAP_FLUX']
+        fluxes = lightcurve['SAP_FLUX']
+        #fluxes = lightcurve['PDCSAP_FLUX']
         times = lightcurve['TIME']
         assert times.shape == fluxes.shape
         # noinspection PyUnresolvedReferences
