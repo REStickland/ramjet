@@ -17,7 +17,7 @@ from ramjet.photometric_database.self_lensing_binary_per_example_database import
 from ramjet.photometric_database.toi_lightcurve_database import ToiLightcurveDatabase
 
 # saved_log_directory = get_latest_log_directory('logs')  # Uses the latest log directory's model.
-saved_log_directory = Path('logs/SLB, unnormalized, all signals in training 2020-01-09-14-26-38')
+saved_log_directory = Path('logs/SLB, all signals training, no less than 2 day period, all tess lc, PDCSAP 2020-01-21-14-08-39')
 
 print('Setting up dataset...')
 database = SelfLensingBinaryPerExampleDatabase()
@@ -44,8 +44,9 @@ for index, example_path in enumerate(example_paths):
     predictions_data_frame = predictions_data_frame.append({'Lightcurve path': str(example_path),
                                                             'Prediction': prediction},
                                                            ignore_index=True)
-    if (index + 9000) % 10000 == 0:
+    if index % 1000 == 0:
+        print(index)
         predictions_data_frame.sort_values('Prediction', ascending=False).reset_index().to_feather(
-            f'predictions {datetime_string}.feather'
+            f'another pdcsap predictions {datetime_string}.feather'
         )
 predictions_data_frame.to_feather(f'predictions {datetime_string}.feather')

@@ -237,8 +237,15 @@ class TessLightcurveLabelPerTimeStepDatabase(LightcurveLabelPerTimeStepDatabase)
         :return: The flux and times values from the FITS file.
         """
         hdu_list = fits.open(example_path)
-        lightcurve = hdu_list[1].data  # Lightcurve information is in first extension table.
-        fluxes = lightcurve['SAP_FLUX']
+        try:
+            lightcurve = hdu_list[1].data  # Lightcurve information is in first extension table.
+        except TypeError:
+            with open('bad_fits', "a+") as f:
+                f.write(f'{example_path}\n')
+            hdu_list = fits.open('/local/data/fugu3/sishitan/TESSdata/lcurve/s7/' +
+                                 'tess2019006130736-s0007-0000000172592894-0131-s_lc.fits')
+            lightcurve = hdu_list[1].data
+        fluxes = lightcurve['PDCSAP_FLUX']
         times = lightcurve['TIME']
         assert times.shape == fluxes.shape
         # noinspection PyUnresolvedReferences

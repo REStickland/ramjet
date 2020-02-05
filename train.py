@@ -1,4 +1,6 @@
 """Code for running training."""
+from pathlib import Path
+
 import matplotlib
 matplotlib.use('Agg')
 import datetime
@@ -21,12 +23,12 @@ def train():
     database = SelfLensingBinaryPerExampleDatabase()
     # database.batch_size = 100  # Reducing the batch size may help if you are running out of memory.
     epochs_to_run = 1000
-    trial_name = 'SLB, normalized, separate training and validation signals'
+    trial_name = 'SLB, all signals training, no less than 2 day period, all tess lc, PDCSAP'
     logs_directory = 'logs'
 
     # Setup logging.
     datetime_string = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    trial_directory = os.path.join(logs_directory, f'{trial_name} {datetime_string}')
+    trial_directory = os.path.join(logs_directory, 'SLB, all signals training, no less than 2 day period, all tess lc, PDCSAP 2020-01-21-14-08-39')
     tensorboard_callback = callbacks.TensorBoard(log_dir=trial_directory)
     database.trial_directory = trial_directory
     model_save_path = os.path.join(trial_directory, 'model.ckpt')
@@ -43,10 +45,12 @@ def train():
 
     # Compile and train model.
     model.compile(optimizer=optimizer, loss=loss_metric, metrics=metrics)
+    model.load_weights(str(Path(trial_directory).joinpath('model.ckpt')))
     model.run_eagerly = True
     try:
         model.fit(training_dataset, epochs=epochs_to_run, validation_data=validation_dataset,
-                  callbacks=[tensorboard_callback, model_checkpoint_callback])
+                  callbacks=[tensorboard_callback, model_checkpoint_callback], steps_per_epoch=500,
+                  validation_steps=100, initial_epoch=10)
     except KeyboardInterrupt:
         print('Interrupted. Saving model before quitting...')
     finally:

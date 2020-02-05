@@ -3,6 +3,7 @@ Code for a database of self lensing binary synthetic data overlaid on real TESS 
 """
 import math
 import os
+import re
 import tarfile
 from typing import Union, List
 
@@ -23,11 +24,25 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
     A database of self lensing binary synthetic data overlaid on real TESS data.
     """
 
-    def __init__(self, data_directory='data/self_lensing_binaries'):
+    def __init__(self, data_directory='data/self_lensing_binaries_50k'):
         super().__init__(data_directory=data_directory)
         self.time_steps_per_example = 20000
         self.synthetic_signals_directory: Path = Path(self.data_directory, 'synthetic_signals')
         self.training_synthetic_signal_paths = np.array([])
+
+    def remove_short_period_signal_paths(self, signal_paths: List[str], minimum_period: float = 2):
+        parameters_feather_path = self.data_directory.joinpath('lc_parameters.feather')
+        parameters_data_frame = pd.read_feather(parameters_feather_path)
+        long_period_parameters_data_frame = parameters_data_frame[
+            parameters_data_frame['Period (days)'] > minimum_period]
+        long_period_signal_numbers = long_period_parameters_data_frame['Synthetic file number'].values
+        long_period_signal_paths = []
+        for signal_path in signal_paths:
+            match = re.search(r'lc_(\d+).feather', signal_path)
+            file_number = int(match.group(1))
+            if file_number in long_period_signal_numbers:
+                long_period_signal_paths.append(signal_path)
+        return long_period_signal_paths
 
     def generate_datasets(self) -> (tf.data.Dataset, tf.data.Dataset):
         """
@@ -35,13 +50,15 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
 
         :return: The training and validation datasets.
         """
-        all_lightcurve_paths = list(map(str, self.lightcurve_directory.glob('*.fits')))
+        # all_lightcurve_paths = list(map(str, self.lightcurve_directory.glob('*.fits')))
+        all_lightcurve_paths = list(map(str, Path('/local/data/fugu3/sishitan/TESSdata/lcurve').glob('**/*.fits')))
         all_signal_paths = list(map(str, self.synthetic_signals_directory.glob('*.feather')))
-        validation_lightcurve_paths, training_lightcurve_paths = self.extract_shuffled_chunk_and_remainder(all_lightcurve_paths,
-                                                                                                  self.validation_ratio)
-        # training_signal_paths, validation_signal_paths = all_signal_paths, all_signal_paths
-        validation_signal_paths, training_signal_paths,  = self.extract_shuffled_chunk_and_remainder(all_signal_paths,
-                                                                                          self.validation_ratio)
+        all_signal_paths = self.remove_short_period_signal_paths(all_signal_paths)
+        validation_lightcurve_paths, training_lightcurve_paths = self.extract_shuffled_chunk_and_remainder(
+            all_lightcurve_paths, self.validation_ratio)
+        validation_signal_paths, training_signal_paths = all_signal_paths, all_signal_paths
+        # training_signal_paths, validation_signal_paths = self.extract_chunk_and_remainder(all_signal_paths,
+        #                                                                                   self.validation_ratio)
         print(f'{len(training_lightcurve_paths)} training lightcurves.')
         print(f'{len(validation_lightcurve_paths)} validation lightcurves.')
         print(f'{len(training_signal_paths)} training synthetic signals.')
@@ -67,6 +84,7 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
                                                       output_types=[tf.float32, tf.float32])
         training_dataset = training_dataset.padded_batch(self.batch_size, padded_shapes=([None, 1], [1])).prefetch(
             buffer_size=tf.data.experimental.AUTOTUNE)
+        validation_dataset = validation_dataset.shuffle(buffer_size=len(list(validation_dataset)))
         validation_dataset = map_py_function_to_dataset(validation_dataset, self.dual_evaluation_preprocessing,
                                                         number_of_parallel_calls=16,
                                                         output_types=[tf.float32])
@@ -264,4 +282,4 @@ class SelfLensingBinaryPerExampleDatabase(TessLightcurveLabelPerTimeStepDatabase
 
 if __name__ == '__main__':
     database = SelfLensingBinaryPerExampleDatabase()
-    database.download_and_prepare_database(magnitude_filter=[-5, 9], number_of_negative_lightcurves_to_download=100000)
+    database.download_and_prepare_database(magnitude_filter=[-5, 9], number_of_negative_lightcurves_to_download=50000)
